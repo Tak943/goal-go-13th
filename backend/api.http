@@ -11,6 +11,9 @@ Content-Type: application/json
 ### 2. 目標の一覧を取得する (GET)
 GET http://localhost:8080/api/goals
 
+### DELETE
+DELETE http://localhost:8080/api/goals/6
+
 
 ### 3. 新しい「✕」を書く（POST)
 POST http://localhost:8080/api/goals/4/marks
@@ -21,4 +24,4 @@ Content-Type: application/json
 }
 
 ### 4. 「✕」マーク書かれた日一覧を取得（GET)
-GET http://localhost:8080/api/goals/1/marks
+GET http://localhost:8080/api/goals/10/marks
