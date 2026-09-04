@@ -31,6 +31,28 @@ const addGoal = async () => {
   goals.value = response.data;
 }
 
+const deleteGoal = async (id) => {
+  // いきなり消えると危険なので、ブラウザ標準の確認メッセージ（ポップアップ）を出す
+  const isConfirmed = confirm("本当に削除しますか？（記録したカレンダーの✕印もすべて消えます）");
+  
+  if (!isConfirmed) {
+    return; // 「キャンセル」が押されたら何もしないで終了
+  }
+
+  try {
+    // 削除のAPI（DELETEメソッド）を呼び出す
+    await axios.delete(`/api/goals/${id}`);
+    
+    // 削除が成功したら、もう一度GETリクエストで取得しなおして画面を更新
+    const response = await axios.get("/api/goals");
+    goals.value = response.data;
+    
+  } catch (error) {
+    alert("削除に失敗しました。");
+    console.error(error);
+  }
+};
+
 //画面が開いた瞬間に処理
 //asyncは次に、データを取ってきたりする待ち時間のいる作業が発生しますよ。を宣言する目印
 //awaitは実際の通信の前に置いて、この処理はデータが来るまでは待機してね。と指示する目印
@@ -178,18 +200,16 @@ const selectDate = (day) => {
     </div>
     
     <ul>
-      <!-- goals配列の中から1つずつ取り出して「goal」という名前をつける -->
-      <!-- :key は「どれがどのデータか」Vueが迷わないためのマイナンバー（id）を渡す -->
-      <li v-for="goal in goals" :key="goal.id">
+      <!-- 【変更】class="goal-item" を追加 -->
+      <li v-for="goal in goals" :key="goal.id" class="goal-item">
         
-        <!-- 目標のタイトルを RouterLink で囲んで、クリックできるようにする -->
-        <!-- 「:to」を使って、JavaScriptの変数（goal.id）をURLに埋め込む -->
-        <!-- <RouterLink :to="`/goals/${goal.id}/calendar`"> -->
-        
-         <!-- こっちの方が汎用性ある -->
-        <RouterLink :to="{ name: 'calendar', params: { goalId: goal.id }}">
-        {{ goal.title }}
+        <!-- 【変更】class="goal-link" を追加 -->
+        <RouterLink :to="{ name: 'calendar', params: { goalId: goal.id }}" class="goal-link">
+          {{ goal.title }}
         </RouterLink>
+        
+        <!-- 【追加】削除ボタン。クリック時に id を渡す -->
+        <button @click="deleteGoal(goal.id)" class="delete-btn">削除</button>
         
       </li>
     </ul>
@@ -325,5 +345,46 @@ const selectDate = (day) => {
   background-color: #f5f5f5;
   color: #ccc;
   font-weight: normal;
+}
+
+/* --- 【追加】目標リストと削除ボタンのデザイン --- */
+ul {
+  list-style: none; /* デフォルトの・（黒丸）を消す */
+  padding: 0;
+}
+
+.goal-item {
+  display: flex;
+  justify-content: space-between; /* タイトルは左、ボタンは右に分ける */
+  align-items: center;
+  padding: 12px 16px;
+  margin-bottom: 10px;
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 8px;
+}
+
+.goal-link {
+  text-decoration: none;
+  color: #333;
+  font-weight: bold;
+  font-size: 18px;
+  flex-grow: 1; /* リンク部分を横いっぱいに広げて押しやすくする */
+}
+.goal-link:hover {
+  color: #4CAF50; /* マウスを乗せたら緑色にする */
+}
+
+.delete-btn {
+  background-color: #ff5252;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.delete-btn:hover {
+  background-color: #ff1744;
 }
 </style>
