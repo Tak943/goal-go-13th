@@ -59,4 +59,11 @@ public class GoalController {
         return goalService.deleteGoalById(id);
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<Goal> modifyGoalById(@PathVariable("id") Long id, @RequestBody Goal newGoalData) {
+        Goal updatedGoal = goalService.modifyGoalById(id, newGoalData);
+
+        return ResponseEntity.ok(updatedGoal);
+    }
+
 }

@@ -53,6 +53,49 @@ const deleteGoal = async (id) => {
   }
 };
 
+// --- 【追加】編集（修正）用の変数 ---
+const isEditModalOpen = ref(false);
+const editingGoalId = ref(null);
+const editGoalTitle = ref("");
+const editGoalStartDate = ref("");
+const editGoalTargetDate = ref("");
+
+// --- 【追加】編集ポップアップを開く・閉じる ---
+const openEditModal = (goal) => {
+  editingGoalId.value = goal.id;
+  editGoalTitle.value = goal.title;
+  editGoalStartDate.value = goal.startDate;
+  editGoalTargetDate.value = goal.targetDate;
+  isEditModalOpen.value = true;
+};
+
+const closeEditModal = () => {
+  isEditModalOpen.value = false;
+  editingGoalId.value = null;
+};
+
+// --- 【追加】修正データを送信する（PUTリクエスト） ---
+const updateGoal = async () => {
+  try {
+    await axios.put(`/api/goals/${editingGoalId.value}`, {
+      title: editGoalTitle.value,
+      startDate: editGoalStartDate.value,
+      targetDate: editGoalTargetDate.value
+    });
+    
+    closeEditModal(); // 成功したら閉じる
+    
+    // 一覧を再取得して画面を更新
+    const response = await axios.get("/api/goals");
+    goals.value = response.data;
+    
+  } catch (error) {
+    // 【重要】Java側で投げた 400 Bad Request をここでキャッチします！
+    alert("更新に失敗しました。開始日が目標日より後になっていないか確認してください。");
+    console.error(error);
+  }
+};
+
 //画面が開いた瞬間に処理
 //asyncは次に、データを取ってきたりする待ち時間のいる作業が発生しますよ。を宣言する目印
 //awaitは実際の通信の前に置いて、この処理はデータが来るまでは待機してね。と指示する目印
@@ -135,38 +178,34 @@ const getFormattedDate = (day) => {
 };
 
 // --- 【追加】その日付がグレーアウト（選択不可）かどうかを判定する関数 ---
+// --- 【変更】自作カレンダーを「編集画面」でも使えるようにする ---
 const isDisabled = (day) => {
-  if (!day) return false; // 空っぽのマスは関係なし
-  
+  if (!day) return false;
   const cellDate = getFormattedDate(day);
 
-  // ① もし「開始日」を選ぼうとしていて、すでに「目標日」が入力されているなら
-  if (activeField.value === 'start' && newGoalTargetDate.value) {
-    // 目標日より「未来」の日付は選べなくする（グレーアウト）
-    return cellDate > newGoalTargetDate.value;
-  }
-  
-  // ② もし「目標日」を選ぼうとしていて、すでに「開始日」が入力されているなら
-  if (activeField.value === 'target' && newGoalStartDate.value) {
-    // 開始日より「過去」の日付は選べなくする（グレーアウト）
-    return cellDate < newGoalStartDate.value;
-  }
+  // （既存）新規追加用の制限
+  if (activeField.value === 'start' && newGoalTargetDate.value) return cellDate > newGoalTargetDate.value;
+  if (activeField.value === 'target' && newGoalStartDate.value) return cellDate < newGoalStartDate.value;
 
-  return false; // どちらの制限にも引っかからなければ、選んでOK！
+  // 【追加】編集画面用の制限
+  if (activeField.value === 'editStart' && editGoalTargetDate.value) return cellDate > editGoalTargetDate.value;
+  if (activeField.value === 'editTarget' && editGoalStartDate.value) return cellDate < editGoalStartDate.value;
+
+  return false;
 };
 
 // 日付をクリックして選択した時の処理
 const selectDate = (day) => {
-  // 空っぽのマス、または「グレーアウト（isDisabled）」のマスなら何もしない
   if (!day || isDisabled(day)) return; 
-  
   const formattedDate = getFormattedDate(day);
   
-  if (activeField.value === 'start') {
-    newGoalStartDate.value = formattedDate;
-  } else if (activeField.value === 'target') {
-    newGoalTargetDate.value = formattedDate;
-  }
+  // （既存）新規追加用
+  if (activeField.value === 'start') newGoalStartDate.value = formattedDate;
+  else if (activeField.value === 'target') newGoalTargetDate.value = formattedDate;
+  
+  // 【追加】編集画面用
+  else if (activeField.value === 'editStart') editGoalStartDate.value = formattedDate;
+  else if (activeField.value === 'editTarget') editGoalTargetDate.value = formattedDate;
   
   closeCalendar();
 };
@@ -208,14 +247,16 @@ const selectDate = (day) => {
           {{ goal.title }}
         </RouterLink>
         
-        <!-- 【追加】削除ボタン。クリック時に id を渡す -->
-        <button @click="deleteGoal(goal.id)" class="delete-btn">削除</button>
-        
+        <!-- 【変更】修正ボタンと削除ボタンを横に並べる箱を作る -->
+        <div class="action-buttons">
+          <button @click="openEditModal(goal)" class="edit-btn">修正</button>
+          <button @click="deleteGoal(goal.id)" class="delete-btn">削除</button>
+        </div>
       </li>
     </ul>
 
     <!-- 【ここから追加】カレンダーのポップアップ（モーダル） -->
-    <div v-if="isCalendarOpen" class="modal-overlay" @click.self="closeCalendar">
+    <div v-if="isCalendarOpen" class="modal-overlay" style="z-index: 1010;" @click.self="closeCalendar">
       <div class="calendar-modal">
         
         <!-- カレンダーの頭（年月と左右ボタン） -->
@@ -250,6 +291,29 @@ const selectDate = (day) => {
           </div>
         </div>
         
+      </div>
+    </div>
+
+    <!-- 【ここから追加】目標修正のポップアップ（モーダル） -->
+    <div v-if="isEditModalOpen" class="modal-overlay" style="z-index: 1000;" @click.self="closeEditModal">
+      <div class="edit-modal">
+        <h2>目標の修正</h2>
+        
+        <div class="edit-form">
+          <label>目標タイトル</label>
+          <input type="text" v-model="editGoalTitle">
+          
+          <label>開始日</label>
+          <input type="text" :value="editGoalStartDate" @click="openCalendar('editStart')" readonly>
+          
+          <label>目標日</label>
+          <input type="text" :value="editGoalTargetDate" @click="openCalendar('editTarget')" readonly>
+        </div>
+        
+        <div class="modal-actions">
+          <button @click="closeEditModal" class="cancel-btn">キャンセル</button>
+          <button @click="updateGoal" class="save-btn">保存する</button>
+        </div>
       </div>
     </div>
   </main>
@@ -386,5 +450,86 @@ ul {
 }
 .delete-btn:hover {
   background-color: #ff1744;
+}
+/* --- 【追加】修正ボタンと編集ポップアップのデザイン --- */
+.action-buttons {
+  display: flex;
+  gap: 8px; /* ボタン同士の隙間 */
+}
+
+.edit-btn {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.edit-btn:hover {
+  background-color: #45a049;
+}
+
+/* 編集モーダル本体 */
+.edit-modal {
+  background-color: white;
+  padding: 25px;
+  border-radius: 12px;
+  width: 90vw;
+  max-width: 400px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.edit-modal h2 {
+  margin-top: 0;
+  text-align: center;
+}
+
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.edit-form label {
+  font-size: 14px;
+  font-weight: bold;
+  color: #555;
+  margin-bottom: -5px;
+}
+
+.edit-form input {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 16px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+
+.cancel-btn {
+  padding: 10px 20px;
+  border: 1px solid #ccc;
+  background-color: #f9f9f9;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.save-btn {
+  padding: 10px 20px;
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.save-btn:hover {
+  background-color: #0b7dda;
 }
 </style>
