@@ -28,6 +28,9 @@ public class Goal {
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
+
     public Long getId() {
         return id;
     }
@@ -54,5 +57,13 @@ public class Goal {
 
     public void setStartDate(LocalDate startDate) {
         this.startDate = startDate;
+    }
+
+    public Long getUserId(){
+        return this.userId;
+    }
+
+    public void setUserId(Long userId){
+        this.userId = userId;
     }
 }
