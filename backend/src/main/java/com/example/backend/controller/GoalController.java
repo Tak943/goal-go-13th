@@ -63,11 +63,18 @@ public class GoalController {
         }
     }
 
-    // デバッグ用
-    // @GetMapping("/{id}")
-    // public Optional<Goal> getGoalById(@PathVariable("id") Long id) {
-    // return goalService.getGoalById(id);
-    // }
+    @GetMapping("/{id}")
+    public Optional<Goal> getGoalById(
+        @PathVariable("id") Long id,
+        @RequestHeader("Authorization") String token
+    ) {
+        if (goalService.isAuthorizedUser(id, token)) {
+            return goalService.getGoalById(id);
+        } else {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "アクセス拒否");
+        }
+    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED) // HTTP 201 (正常Created) 今後ステータスコードはいったん無視。基幹機能に集中。

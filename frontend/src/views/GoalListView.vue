@@ -1,9 +1,11 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
+import { useRouter } from 'vue-router';
 
 //すべての通信の先頭に自動でくっつく
 axios.defaults.baseURL = 'http://localhost:8080';
+const router = useRouter();
 
 //取得した目標リストの箱
 const goals = ref([]);
@@ -11,6 +13,31 @@ const goals = ref([]);
 const newGoalTitle = ref("");
 const newGoalTargetDate = ref("");
 const newGoalStartDate = ref("");
+
+// --- 【追加】目標一覧を取得する共通関数 ---
+const fetchGoals = async () => {
+  const userId = localStorage.getItem('app_userId');
+  if (!userId) return; // userIdが無ければ何もしない
+
+  try {
+    // 自分のuserIdをつけてGETリクエストを送る
+    const response = await axios.get(`/api/goals?userId=${userId}`);
+    goals.value = response.data;
+  } catch (error) {
+    console.error("目標の取得に失敗しました", error);
+  }
+};
+
+// --- 【追加】ログアウト関数 ---
+const logout = () => {
+  if (confirm("ログアウトしますか？")) {
+    localStorage.removeItem('app_token');
+    localStorage.removeItem('app_userId');
+    localStorage.removeItem('app_username');
+    delete axios.defaults.headers.common['Authorization'];
+    router.push({ name: 'login' });
+  }
+};
 
 //追加ボタン押されたらPOST
 const addGoal = async () => {
@@ -27,8 +54,7 @@ const addGoal = async () => {
   newGoalStartDate.value = "";
 
   //もう一度GETリクエストで取得しなおして、画面の目標一覧を更新。
-  const response = await axios.get("/api/goals");
-  goals.value = response.data;
+  await fetchGoals();
 }
 
 const deleteGoal = async (id) => {
@@ -44,8 +70,7 @@ const deleteGoal = async (id) => {
     await axios.delete(`/api/goals/${id}`);
     
     // 削除が成功したら、もう一度GETリクエストで取得しなおして画面を更新
-    const response = await axios.get("/api/goals");
-    goals.value = response.data;
+    await fetchGoals();
     
   } catch (error) {
     alert("削除に失敗しました。");
@@ -86,8 +111,7 @@ const updateGoal = async () => {
     closeEditModal(); // 成功したら閉じる
     
     // 一覧を再取得して画面を更新
-    const response = await axios.get("/api/goals");
-    goals.value = response.data;
+    await fetchGoals();
     
   } catch (error) {
     // 【重要】Java側で投げた 400 Bad Request をここでキャッチします！
@@ -100,13 +124,7 @@ const updateGoal = async () => {
 //asyncは次に、データを取ってきたりする待ち時間のいる作業が発生しますよ。を宣言する目印
 //awaitは実際の通信の前に置いて、この処理はデータが来るまでは待機してね。と指示する目印
 onMounted(async () => {
-  // Spring BootのAPIからデータを取得する（GETリクエスト）
-  const response = await axios.get("/api/goals");
-
-  // axiosで通信した場合、実際のデータは response の中の `data` というプロパティに入っている
-  goals.value = response.data;
-
-  console.log(goals.value);
+  await fetchGoals();
 })
 
 
@@ -213,7 +231,10 @@ const selectDate = (day) => {
 
 <template>
   <main>
-    <h1>マイゴール一覧</h1>
+    <div class="app-header">
+      <h1>マイゴール一覧</h1>
+      <button @click="logout" class="logout-btn">ログアウト</button>
+    </div>
 
     <!-- 新規追加フォーム -->
     <div>
@@ -531,5 +552,25 @@ ul {
 }
 .save-btn:hover {
   background-color: #0b7dda;
+}
+/* --- 【追加】ヘッダーとログアウトボタン --- */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.logout-btn {
+  padding: 8px 16px;
+  background-color: #757575;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.logout-btn:hover {
+  background-color: #616161;
 }
 </style>

@@ -1,9 +1,10 @@
 <script setup>
 import { ref, onMounted, nextTick, computed } from 'vue';
 import axios from 'axios';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router'; // 【変更】useRouterを追加
 
 const route = useRoute();
+const router = useRouter(); // 【追加】画面遷移用
 const goalId = route.params.goalId;
 const goal = ref({});
 
@@ -13,23 +14,42 @@ const markedMap = ref({});
 const viewYear = ref(new Date().getFullYear());
 const viewMonth = ref(new Date().getMonth());
 
+// --- 【追加】ログアウト関数 ---
+const logout = () => {
+  if (confirm("ログアウトしますか？")) {
+    localStorage.removeItem('app_token');
+    localStorage.removeItem('app_userId');
+    localStorage.removeItem('app_username');
+    delete axios.defaults.headers.common['Authorization'];
+    router.push({ name: 'login' });
+  }
+};
+
 onMounted(async () => {
-  const response = await axios.get(`/api/goals/${goalId}`);
-  goal.value = response.data;
+  // 【変更】他人のデータを見ようとした時の403エラーをキャッチするために try-catch を追加
+  try {
+    const response = await axios.get(`/api/goals/${goalId}`);
+    goal.value = response.data;
 
-  // 目標の開始日に合わせてカレンダーの初期表示を切り替える
-  if (goal.value.startDate) {
-    const start = new Date(goal.value.startDate);
-    viewYear.value = start.getFullYear();
-    viewMonth.value = start.getMonth();
-  }
+    // 目標の開始日に合わせてカレンダーの初期表示を切り替える
+    if (goal.value.startDate) {
+      const start = new Date(goal.value.startDate);
+      viewYear.value = start.getFullYear();
+      viewMonth.value = start.getMonth();
+    }
 
-  const markResponse = await axios.get(`/api/goals/${goalId}/marks`);
-  const map = {};
-  for(let i = 0; i < markResponse.data.length; i++){
-    map[markResponse.data[i].markedDate] = true;
+    const markResponse = await axios.get(`/api/goals/${goalId}/marks`);
+    const map = {};
+    for(let i = 0; i < markResponse.data.length; i++){
+      map[markResponse.data[i].markedDate] = true;
+    }
+    markedMap.value = map;
+    
+  } catch (error) {
+    alert("データの取得に失敗しました。権限がないか、目標が存在しません。");
+    console.error(error);
+    router.push({ name: 'home' }); // エラー時は一覧画面に追い返す
   }
-  markedMap.value = map;
 });
 
 // --- カレンダーの月切り替え処理 ---
@@ -206,7 +226,7 @@ const saveMark = async () => {
     closeModal();
     
   } catch (error) {
-    alert("エラーが発生しました。");
+    alert("通信エラー、または権限がありません。"); // 【変更】エラー文言を少し調整
     console.error(error);
   }
 };
@@ -214,13 +234,21 @@ const saveMark = async () => {
 
 <template>
   <main>
-    <h1>目標ID: {{ goal.id }} 目標タイトル: {{ goal.title }} のカレンダー画面</h1>
-    <ul>
-      <li>目標開始日: {{ goal.startDate }}</li>
-      <li>目標日: {{ goal.targetDate }}</li>
-    </ul>
+    <!-- 【追加】ヘッダー部分（GoalListViewと統一） -->
+    <div class="app-header">
+      <h1>目標カレンダー</h1>
+      <button @click="logout" class="logout-btn">ログアウト</button>
+    </div>
 
-    <!-- 【ここから変更】月ごとのカレンダー形式 -->
+    <!-- 【変更】タイトル表示を少しスッキリさせました -->
+    <div class="goal-info">
+      <h2>{{ goal.title }}</h2>
+      <p>ID: {{ goal.id }} ｜ 期間: {{ goal.startDate }} 〜 {{ goal.targetDate }}</p>
+      <!-- おまけ：一覧に戻るリンク -->
+      <RouterLink :to="{name: 'home'}" class="back-link">← 一覧に戻る</RouterLink>
+    </div>
+
+    <!-- 月ごとのカレンダー形式 -->
     <div class="calendar-container">
       
       <!-- カレンダー上部（月切り替え） -->
@@ -252,10 +280,10 @@ const saveMark = async () => {
           <!-- 日付の数字 -->
           <span v-if="day" class="date-text">{{ day.dayNum }}</span>
           
-          <!-- 【追加】開始日の炎イラスト -->
+          <!-- 開始日の炎イラスト -->
           <span v-if="day && day.isStartDay" class="icon-start">🔥</span>
 
-          <!-- 【追加】目標日の星イラスト -->
+          <!-- 目標日の星イラスト -->
           <span v-if="day && day.isTargetDay" class="icon-target">⭐</span>
           
           <!-- スタンプ -->
@@ -264,13 +292,9 @@ const saveMark = async () => {
       </div>
       
     </div>
-    
-    <!-- おまけ：一覧に戻るリンク -->
-    <RouterLink :to="{name: 'home'}">一覧に戻る</RouterLink>
 
-    <!-- ※ お絵かきモーダルのコード（<div v-if="isModalOpen"... ）は全く同じままでOKです！ -->
+    <!-- お絵かきモーダル -->
     <div v-if="isModalOpen" class="modal-overlay" @click.self="closeModal">
-      <!-- ... (省略: さっきまでのモーダルの中身そのまま) ... -->
       <div class="modal-content">
         <h2>{{ selectedDay.displayDate }} の記録</h2>
         <p>ここに「✕」を描いてください</p>
@@ -301,12 +325,55 @@ const saveMark = async () => {
   </main>
 </template>
 
-<!-- スタイル（デザイン）をここに書きます。「scoped」はこの画面だけに適用するという意味です -->
 <style scoped>
+/* --- 【追加】ヘッダーとログアウトボタン --- */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.logout-btn {
+  padding: 8px 16px;
+  background-color: #757575;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.logout-btn:hover {
+  background-color: #616161;
+}
+
+/* --- 【追加】目標情報のデザイン --- */
+.goal-info {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.goal-info h2 {
+  margin: 0;
+  color: #333;
+}
+.goal-info p {
+  color: #666;
+  margin-top: 5px;
+}
+.back-link {
+  display: inline-block;
+  margin-top: 10px;
+  text-decoration: none;
+  color: #2196F3;
+  font-weight: bold;
+}
+.back-link:hover {
+  text-decoration: underline;
+}
+
 /* --- カレンダー全体のレイアウト --- */
 .calendar-container {
   max-width: 600px;
-  /* margin: 20px 0; を以下に変更（auto をつけると左右の余白が均等になり、中央に配置されます！） */
   margin: 20px auto; 
   padding: 20px;
   background-color: white;
@@ -374,7 +441,7 @@ const saveMark = async () => {
   cursor: default;
 }
 
-/* 【追加】目標期間外のマス目（グレーアウト） */
+/* 目標期間外のマス目（グレーアウト） */
 .day-box.out-of-range {
   background-color: #f0f0f0;
   color: #ccc;
@@ -389,7 +456,7 @@ const saveMark = async () => {
   cursor: default; /* クリックできないように見せる */
 }
 
-/* 【追加】炎のイラスト（マス目の左上に配置） */
+/* 炎のイラスト（マス目の左上に配置） */
 .icon-start {
   position: absolute;
   top: 2px;
@@ -398,7 +465,7 @@ const saveMark = async () => {
   opacity: 0.9;
 }
 
-/* 【追加】星のイラスト（マス目の右下に配置） */
+/* 星のイラスト（マス目の右下に配置） */
 .icon-target {
   position: absolute;
   bottom: 0px;
@@ -411,13 +478,10 @@ const saveMark = async () => {
   font-size: 35px;
   color: red;
   opacity: 0.7;
-  z-index: 10; /* 【追加】スタンプが一番上にくるように念のため追加 */
+  z-index: 10;
 }
 
-
 /* --- ここからポップアップ（モーダル）用のデザイン --- */
-
-/* 画面全体を覆う暗い半透明の背景 */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -428,10 +492,9 @@ const saveMark = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000; /* 一番手前に表示する */
+  z-index: 1000;
 }
 
-/* ポップアップの白い箱 */
 .modal-content {
   background-color: white;
   padding: 30px;
@@ -443,39 +506,35 @@ const saveMark = async () => {
   box-shadow: 0 4px 15px rgba(0,0,0,0.2);
 }
 
-/* --- キャンバスと薄い✕を重ねるための設定 --- */
 .canvas-container {
   position: relative;
   width: 300px;
   height: 300px;
 }
 
-/* 薄い✕のデザイン */
 .guide-x {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   font-size: 250px;
-  color: #e0e0e0; /* 薄いグレー */
-  user-select: none; /* テキストとして選択されないようにする */
-  z-index: 1; /* キャンバスの下に配置 */
+  color: #e0e0e0;
+  user-select: none;
+  z-index: 1;
 }
 
-/* キャンバスのデザイン（一部修正） */
 .draw-canvas {
   position: absolute;
   top: 0;
   left: 0;
   border: 3px dashed #ccc;
   border-radius: 8px;
-  background-color: transparent; /* 【重要】背景を透明にして下の✕を透かす */
+  background-color: transparent;
   cursor: crosshair;
   touch-action: none;
-  z-index: 2; /* ✕の上に配置 */
+  z-index: 2;
 }
 
-/* ボタンエリアのデザイン */
 .modal-actions {
   display: flex;
   gap: 10px;
