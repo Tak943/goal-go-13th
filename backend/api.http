@@ -10,8 +10,8 @@ Content-Type: application/json
 }
 
 ### 2. 目標の一覧を取得する (GET) ?userId=でユーザーして取得
-GET http://localhost:8080/api/goals
-Authorization: 4e9de250-bc82-49bd-ae2b-ea4d7183c3f9
+GET http://localhost:8080/api/goals?userId=4
+Authorization: d10ab66a-0191-4099-9413-a30dadfbe2ee
 
 ### DELETE目標の削除
 DELETE http://localhost:8080/api/goals/20
@@ -37,6 +37,10 @@ Content-Type: application/json
 {
   "markedDate": "2026-09-28"
 }
+
+### 4. goalIdの「✕」マーク書かれた日一覧を取得（GET)
+GET http://localhost:8080/api/goals/14
+Authorization: d10ab66a-0191-4099-9413-a30dadfbe2ee
 
 ### 4. 「✕」マーク書かれた日一覧を取得（GET)
 GET http://localhost:8080/api/goals/14/marks
