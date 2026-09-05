@@ -35,3 +35,17 @@ Content-Type: application/json
 
 ### 4. 「✕」マーク書かれた日一覧を取得（GET)
 GET http://localhost:8080/api/goals/10/marks
+
+###
+GET http://localhost:8080/api/login
+
+###
+POST http://localhost:8080/api/login
+Content-Type: application/json
+
+{
+  "username": "次郎"
+}
+
+###
+DELETE http://localhost:8080/api/login/1
