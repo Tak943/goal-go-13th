@@ -16,7 +16,7 @@ import jakarta.transaction.Transactional;
 public class MarkService {
     private final MarkRepository markRepository;
 
-    public MarkService(MarkRepository markRepository){
+    public MarkService(MarkRepository markRepository) {
         this.markRepository = markRepository;
     }
 

@@ -28,7 +28,7 @@ public class Goal {
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id", nullable = false, updatable = false)
     private Long userId;
 
     public Long getId() {
@@ -59,11 +59,11 @@ public class Goal {
         this.startDate = startDate;
     }
 
-    public Long getUserId(){
+    public Long getUserId() {
         return this.userId;
     }
 
-    public void setUserId(Long userId){
+    public void setUserId(Long userId) {
         this.userId = userId;
     }
 }
