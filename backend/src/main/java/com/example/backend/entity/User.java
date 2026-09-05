@@ -9,7 +9,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
 @Entity
-@Table(name = "users", uniqueConstraints = { @UniqueConstraint(columnNames = { "username" }) })
+@Table(name = "users", uniqueConstraints = { @UniqueConstraint(columnNames = { "username", "token" }) })
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -18,19 +18,30 @@ public class User {
     @Column(name = "username", nullable = false)
     private String username;
 
-    public Long getId(){
+    @Column(name = "token", nullable = false)
+    private String token;
+
+    public Long getId() {
         return this.id;
     }
 
-    public void setId(Long id){
+    public void setId(Long id) {
         this.id = id;
     }
 
-    public String getUsername(){
+    public String getUsername() {
         return this.username;
     }
 
-    public void setUsername(String username){
+    public void setUsername(String username) {
         this.username = username;
+    }
+
+    public String getToken() {
+        return this.token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
     }
 }

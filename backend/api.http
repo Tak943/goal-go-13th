@@ -1,51 +1,66 @@
 ### 1. 新しい目標を作成する (POST)
 POST http://localhost:8080/api/goals
+Authorization: 4e9de250-bc82-49bd-ae2b-ea4d7183c3f9
 Content-Type: application/json
 
 {
-  "title": "偽志望校合格",
-  "targetDate": "2026-12-31",
-  "startDate": "2027-08-28"
+  "title": "ぴょんすけ",
+  "targetDate": "2027-05-19",
+  "startDate": "2026-07-28"
 }
 
-### 2. 目標の一覧を取得する (GET)
+### 2. 目標の一覧を取得する (GET) ?userId=でユーザーして取得
 GET http://localhost:8080/api/goals
+Authorization: 4e9de250-bc82-49bd-ae2b-ea4d7183c3f9
 
-### DELETE
-DELETE http://localhost:8080/api/goals/6
+### DELETE目標の削除
+DELETE http://localhost:8080/api/goals/20
+Authorization: 4e9de250-bc82-49bd-ae2b-ea4d7183c3f9
 
-###
-PUT http://localhost:8080/api/goals/7
+### 目標の更新
+PUT http://localhost:8080/api/goals/14
+Authorization: d10ab66a-0191-4099-9413-a30dadfbe2ee
 Content-Type: application/json
 
 {
-  "title": "わろた",
-  "targetDate": "2026-01-31",
-  "startDate": "2025-08-28"
+  "title": "江南スタイル",
+  "targetDate": "2026-10-31",
+  "startDate": "2026-09-28"
 }
 
 
 ### 3. 新しい「✕」を書く（POST)
-POST http://localhost:8080/api/goals/4/marks
+POST http://localhost:8080/api/goals/14/marks
+Authorization: d10ab66a-0191-4099-9413-a30dadfbe2ee
 Content-Type: application/json
 
 {
-  "markedDate": "2026-11-14"
+  "markedDate": "2026-09-28"
 }
 
 ### 4. 「✕」マーク書かれた日一覧を取得（GET)
-GET http://localhost:8080/api/goals/10/marks
+GET http://localhost:8080/api/goals/14/marks
+Authorization: d10ab66a-0191-4099-9413-a30dadfbe2ee
 
-###
-GET http://localhost:8080/api/login
+### 全ユーザー取得
+GET http://localhost:8080/api/users
 
-###
-POST http://localhost:8080/api/login
+### ユーザーの登録
+POST http://localhost:8080/api/users/login
 Content-Type: application/json
 
 {
-  "username": "次郎"
+  "username": "武士"
 }
 
-###
-DELETE http://localhost:8080/api/login/1
+### ユーザーの削除
+DELETE http://localhost:8080/api/users/6
+
+### 目標の削除（正しいトークンの場合）
+DELETE http://localhost:8080/api/goals/16
+Authorization: d10ab66a-0191-4099-9413-a30dadfbe2ee
+
+
+### 目標の削除（他人のトークン、または適当な文字列の場合）
+DELETE http://localhost:8080/api/goals/14
+Authorization: dammy-token-12345

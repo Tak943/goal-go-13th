@@ -18,15 +18,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-
-
 @RestController
-@RequestMapping("/api/login")
+@RequestMapping("/api/users")
 @CrossOrigin
 public class UserController {
     private final UserService userService;
-    
-    public UserController(UserService userService){
+
+    public UserController(UserService userService) {
         this.userService = userService;
     }
 
@@ -34,15 +32,15 @@ public class UserController {
     public List<User> getAllUsers() {
         return this.userService.getAllUsers();
     }
-    
-    @PostMapping
+
+    @PostMapping("/login")
     public User createOrLoginNewUser(@RequestBody User user) {
         return this.userService.createOrLoginNewUser(user.getUsername());
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteUser(@PathVariable("id") Long id){
+    public ResponseEntity<String> deleteUser(@PathVariable("id") Long id) {
         return this.userService.deleteUser(id);
     }
-    
+
 }
