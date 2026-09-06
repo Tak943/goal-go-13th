@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+# 追記（.envファイルはGitで無視してね、という命令）
+.env
