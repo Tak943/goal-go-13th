@@ -12,9 +12,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
 @Entity
-@Table(name = "todos", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"goal_id", "title", "time"})
-})
+@Table(name = "todos")
 public class Todo {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,56 +28,57 @@ public class Todo {
     private LocalTime time;
 
     @Column(name = "is_done")
-    private Boolean isDone = false; //nullを扱えるためにプリミティブのbooleanじゃなくて、オブジェクトのBoolean。オブジェクトだから値をチェックしたりエンティティにセットしたりする前に、必ず null チェックを行う
+    private Boolean isDone = false; // nullを扱えるためにプリミティブのbooleanじゃなくて、オブジェクトのBoolean。オブジェクトだから値をチェックしたりエンティティにセットしたりする前に、必ず
+                                    // null チェックを行う
 
     @Column(name = "done_date")
     private LocalDate doneDate;
 
-    public Long getId(){
+    public Long getId() {
         return this.id;
     }
 
-    public void setId(Long id){
+    public void setId(Long id) {
         this.id = id;
     }
 
-    public Long getGoalId(){
+    public Long getGoalId() {
         return this.goalId;
     }
 
-    public void setGoalId(Long goalId){
+    public void setGoalId(Long goalId) {
         this.goalId = goalId;
     }
 
-    public String getTitle(){
+    public String getTitle() {
         return this.title;
     }
 
-    public void setTitle(String title){
+    public void setTitle(String title) {
         this.title = title;
     }
 
-    public LocalTime getTime(){
+    public LocalTime getTime() {
         return this.time;
     }
 
-    public void setTime(LocalTime time){
+    public void setTime(LocalTime time) {
         this.time = time;
     }
 
-    public Boolean getIsDone(){
+    public Boolean getIsDone() {
         return this.isDone;
     }
 
-    public void setIsDone(boolean isDone){
+    public void setIsDone(boolean isDone) {
         this.isDone = isDone;
     }
 
-    public LocalDate getDoneDate(){
+    public LocalDate getDoneDate() {
         return this.doneDate;
     }
 
-    public void setDoneDate(LocalDate doneDate){
+    public void setDoneDate(LocalDate doneDate) {
         this.doneDate = doneDate;
     }
 }
