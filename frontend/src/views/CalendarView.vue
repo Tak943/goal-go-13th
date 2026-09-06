@@ -10,19 +10,53 @@ const goal = ref({});
 
 const markedMap = ref({});
 
+const toast = ref({
+  show: false,
+  message: '',
+  type: 'error'
+});
+
+let toastTimer = null;
+
+const showToast = (message, type = 'error') => {
+  toast.value = {
+    show: true,
+    message,
+    type
+  };
+
+  clearTimeout(toastTimer);
+
+  toastTimer = setTimeout(() => {
+    toast.value.show = false;
+  }, 3000);
+};
+
 // カレンダーの表示用の年月（初期値は今日）
 const viewYear = ref(new Date().getFullYear());
 const viewMonth = ref(new Date().getMonth());
 
 // --- 【追加】ログアウト関数 ---
+const isLogoutModalOpen = ref(false);
+
 const logout = () => {
-  if (confirm("ログアウトしますか？")) {
-    localStorage.removeItem('app_token');
-    localStorage.removeItem('app_userId');
-    localStorage.removeItem('app_username');
-    delete axios.defaults.headers.common['Authorization'];
-    router.push({ name: 'login' });
-  }
+  isLogoutModalOpen.value = true;
+};
+
+const cancelLogout = () => {
+  isLogoutModalOpen.value = false;
+};
+
+const executeLogout = () => {
+  localStorage.removeItem('app_token');
+  localStorage.removeItem('app_userId');
+  localStorage.removeItem('app_username');
+
+  delete axios.defaults.headers.common['Authorization'];
+
+  isLogoutModalOpen.value = false;
+
+  router.push({ name: 'login' });
 };
 
 onMounted(async () => {
@@ -46,9 +80,12 @@ onMounted(async () => {
     markedMap.value = map;
     
   } catch (error) {
-    alert("データの取得に失敗しました。権限がないか、目標が存在しません。");
+    showToast("データの取得に失敗しました。目標が存在しないか、アクセスできません。");
     console.error(error);
-    router.push({ name: 'home' }); // エラー時は一覧画面に追い返す
+
+    setTimeout(() => {
+      router.push({ name: 'home' });
+    }, 1800);
   }
 });
 
@@ -123,7 +160,7 @@ let lastPos = null;
 const openModal = async (day) => {
   if (!day || !day.isWithinRange) return; // 空白や期間外なら何もしない
   if (day.isMarked) {
-    alert("すでに記録済みです！");
+    showToast("この日はすでに記録済みです。", "info");
     return;
   }
   selectedDay.value = day;
@@ -212,7 +249,7 @@ const saveMark = async () => {
   }
   
   if (!hasIntersection) {
-    alert("✕になっていないようです!2本の線が交差するように描いてください。");
+    showToast("✕になっていません。2本の線が交差するように描いてください。");
     return;
   }
   
@@ -226,84 +263,237 @@ const saveMark = async () => {
     closeModal();
     
   } catch (error) {
-    alert("通信エラー、または権限がありません。"); // 【変更】エラー文言を少し調整
+    showToast("記録に失敗しました。時間をおいてもう一度試してください。");
     console.error(error);
   }
 };
 </script>
 
 <template>
-  <main>
-    <!-- 【追加】ヘッダー部分（GoalListViewと統一） -->
-    <div class="app-header">
-      <h1>目標カレンダー</h1>
-      <button @click="logout" class="logout-btn">ログアウト</button>
+  <main class="calendar-page">
+
+    <!-- ヘッダー -->
+    <header class="app-header">
+      <button class="back-button" @click="router.push({ name: 'home' })">
+        ← 一覧
+      </button>
+
+      <button @click="logout" class="logout-btn">
+        ログアウト
+      </button>
+      <!-- ログアウト確認モーダル -->
+<div
+  v-if="isLogoutModalOpen"
+  class="confirm-overlay"
+  @click.self="cancelLogout"
+>
+  <div class="confirm-modal">
+
+    <div class="confirm-icon">
+      ↪
     </div>
 
-    <!-- 【変更】タイトル表示を少しスッキリさせました -->
-    <div class="goal-info">
-      <h2>{{ goal.title }}</h2>
-      <p>ID: {{ goal.id }} ｜ 期間: {{ goal.startDate }} 〜 {{ goal.targetDate }}</p>
-      <!-- おまけ：一覧に戻るリンク -->
-      <RouterLink :to="{name: 'home'}" class="back-link">← 一覧に戻る</RouterLink>
+    <h2>ログアウトしますか？</h2>
+
+    <p>
+      現在のアカウントからログアウトします。
+    </p>
+
+    <div class="confirm-actions">
+
+      <button
+        class="confirm-cancel"
+        @click="cancelLogout"
+      >
+        キャンセル
+      </button>
+
+      <button
+        class="confirm-logout"
+        @click="executeLogout"
+      >
+        ログアウト
+      </button>
+
     </div>
 
-    <!-- 月ごとのカレンダー形式 -->
-    <div class="calendar-container">
-      
-      <!-- カレンダー上部（月切り替え） -->
-      <div class="cal-header">
-        <button @click="prevMonth">＜ 先月</button>
-        <h2>{{ viewYear }}年 {{ viewMonth + 1 }}月</h2>
-        <button @click="nextMonth">来月 ＞</button>
+  </div>
+</div>
+    </header>
+
+    <!-- 目標情報 -->
+    <section class="goal-info">
+
+      <div class="goal-title-row">
+        <div>
+          <span class="goal-label">MY GOAL</span>
+          <h1>{{ goal.title }}</h1>
+        </div>
       </div>
-      
+
+      <div class="goal-period">
+        <div class="period-item">
+          <span class="period-label">START</span>
+          <span>{{ goal.startDate }}</span>
+        </div>
+
+        <div class="period-arrow">→</div>
+
+        <div class="period-item">
+          <span class="period-label">GOAL</span>
+          <span>{{ goal.targetDate }}</span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- カレンダー -->
+    <section class="calendar-container">
+
+      <div class="cal-header">
+
+        <button
+          class="month-button"
+          @click="prevMonth"
+          aria-label="前の月"
+        >
+          ‹
+        </button>
+
+        <div class="month-title">
+          <span>{{ viewYear }}</span>
+          <strong>{{ viewMonth + 1 }}月</strong>
+        </div>
+
+        <button
+          class="month-button"
+          @click="nextMonth"
+          aria-label="次の月"
+        >
+          ›
+        </button>
+
+      </div>
+
       <!-- 曜日 -->
       <div class="cal-weekdays">
-        <span class="sun">日</span><span>月</span><span>火</span><span>水</span>
-        <span>木</span><span>金</span><span class="sat">土</span>
+        <span class="sun">日</span>
+        <span>月</span>
+        <span>火</span>
+        <span>水</span>
+        <span>木</span>
+        <span>金</span>
+        <span class="sat">土</span>
       </div>
-      
-      <!-- カレンダーのマス目 -->
+
+      <!-- 日付 -->
       <div class="cal-grid">
-        <div 
-          v-for="(day, index) in calendarGrid" 
-          :key="day ? day.apiDate : index" 
-          class="day-box" 
-          :class="{ 
-            'is-empty': !day, 
+
+        <div
+          v-for="(day, index) in calendarGrid"
+          :key="day ? day.apiDate : index"
+          class="day-box"
+          :class="{
+            'is-empty': !day,
             'out-of-range': day && !day.isWithinRange,
-            'marked': day && day.isMarked 
+            'marked': day && day.isMarked,
+            'start-day': day && day.isStartDay,
+            'target-day': day && day.isTargetDay
           }"
           @click="openModal(day)"
         >
-          <!-- 日付の数字 -->
-          <span v-if="day" class="date-text">{{ day.dayNum }}</span>
-          
-          <!-- 開始日の炎イラスト -->
-          <span v-if="day && day.isStartDay" class="icon-start">🔥</span>
 
-          <!-- 目標日の星イラスト -->
-          <span v-if="day && day.isTargetDay" class="icon-target">⭐</span>
-          
-          <!-- スタンプ -->
-          <span v-if="day && day.isMarked" class="stamp">❌</span>
+          <template v-if="day">
+
+            <span class="date-text">
+              {{ day.dayNum }}
+            </span>
+
+            <!-- 開始日 -->
+            <span
+              v-if="day.isStartDay"
+              class="day-badge start-badge"
+            >
+              START
+            </span>
+
+            <!-- 目標日 -->
+            <span
+              v-if="day.isTargetDay"
+              class="day-badge target-badge"
+            >
+              GOAL
+            </span>
+
+            <!-- 達成済み -->
+            <div
+              v-if="day.isMarked"
+              class="mark-circle"
+            >
+              ✕
+            </div>
+
+          </template>
+
+        </div>
+
+      </div>
+
+      <!-- 凡例 -->
+      <div class="calendar-legend">
+        <div>
+          <span class="legend-mark achieved"></span>
+          <span>記録済み</span>
+        </div>
+
+        <div>
+          <span class="legend-mark start"></span>
+          <span>開始日</span>
+        </div>
+
+        <div>
+          <span class="legend-mark target"></span>
+          <span>目標日</span>
         </div>
       </div>
-      
-    </div>
+
+    </section>
 
     <!-- お絵かきモーダル -->
-    <div v-if="isModalOpen" class="modal-overlay" @click.self="closeModal">
+    <div
+      v-if="isModalOpen"
+      class="modal-overlay"
+      @click.self="closeModal"
+    >
+
       <div class="modal-content">
-        <h2>{{ selectedDay.displayDate }} の記録</h2>
-        <p>ここに「✕」を描いてください</p>
+
+        <div class="modal-header">
+          <div>
+            <span class="modal-label">DAILY RECORD</span>
+            <h2>{{ selectedDay.displayDate }}</h2>
+          </div>
+
+          <button
+            class="close-button"
+            @click="closeModal"
+          >
+            ×
+          </button>
+        </div>
+
+        <p class="modal-description">
+          今日の行動を記録しましょう
+        </p>
+
         <div class="canvas-container">
-          <div class="guide-x">✕</div>
-          <canvas 
-            ref="canvasRef" 
-            width="300" 
-            height="300" 
+
+          <div class="guide-x">×</div>
+
+          <canvas
+            ref="canvasRef"
+            width="300"
+            height="300"
             class="draw-canvas"
             @mousedown="startDrawing"
             @mousemove="draw"
@@ -313,250 +503,917 @@ const saveMark = async () => {
             @touchmove="draw"
             @touchend="stopDrawing"
           ></canvas>
+
         </div>
+
+        <p class="draw-hint">
+          2本の線が交差するように「×」を描いてください
+        </p>
+
         <div class="modal-actions">
-          <button @click="clearCanvas">描き直す</button>
-          <button @click="closeModal">キャンセル</button>
-          <button class="save-btn" @click="saveMark">登録する</button>
+
+          <button
+            class="secondary-btn"
+            @click="clearCanvas"
+          >
+            描き直す
+          </button>
+
+          <button
+            class="cancel-btn"
+            @click="closeModal"
+          >
+            キャンセル
+          </button>
+
+          <button
+            class="save-btn"
+            @click="saveMark"
+          >
+            記録する
+          </button>
+
         </div>
+
       </div>
+
     </div>
+
+    <!-- Toast -->
+    <Transition name="toast">
+      <div
+        v-if="toast.show"
+        class="toast"
+        :class="`toast-${toast.type}`"
+      >
+        <span class="toast-icon">
+          {{ toast.type === 'info' ? 'ⓘ' : '!' }}
+        </span>
+
+        <span>{{ toast.message }}</span>
+
+        <button
+          class="toast-close"
+          @click="toast.show = false"
+        >
+          ×
+        </button>
+      </div>
+    </Transition>
 
   </main>
 </template>
 
 <style scoped>
-/* --- 【追加】ヘッダーとログアウトボタン --- */
+
+* {
+  box-sizing: border-box;
+}
+
+.calendar-page {
+  min-height: 100vh;
+  padding: 24px 16px 48px;
+  background: #f6f8f7;
+  color: #202522;
+}
+
+/* =========================
+   Header
+========================= */
+
 .app-header {
+  max-width: 680px;
+  margin: 0 auto 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+}
+
+.back-button,
+.logout-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.back-button {
+  color: #3d7a58;
+  padding: 10px 4px;
 }
 
 .logout-btn {
-  padding: 8px 16px;
-  background-color: #757575;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: bold;
-}
-.logout-btn:hover {
-  background-color: #616161;
+  color: #777;
+  padding: 10px 4px;
 }
 
-/* --- 【追加】目標情報のデザイン --- */
-.goal-info {
-  text-align: center;
-  margin-bottom: 20px;
+.back-button:hover {
+  color: #245b3d;
 }
-.goal-info h2 {
-  margin: 0;
+
+.logout-btn:hover {
   color: #333;
 }
-.goal-info p {
-  color: #666;
-  margin-top: 5px;
-}
-.back-link {
-  display: inline-block;
-  margin-top: 10px;
-  text-decoration: none;
-  color: #2196F3;
-  font-weight: bold;
-}
-.back-link:hover {
-  text-decoration: underline;
+
+/* =========================
+   Goal information
+========================= */
+
+.goal-info {
+  max-width: 680px;
+  margin: 0 auto 20px;
+  padding: 24px;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
-/* --- カレンダー全体のレイアウト --- */
+.goal-label,
+.modal-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #72a487;
+}
+
+.goal-info h1 {
+  margin: 0;
+  font-size: clamp(22px, 5vw, 30px);
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.goal-period {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid #edf0ee;
+}
+
+.period-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 13px;
+  color: #555;
+}
+
+.period-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #999;
+}
+
+.period-arrow {
+  color: #aaa;
+  font-size: 18px;
+}
+
+/* =========================
+   Calendar
+========================= */
+
 .calendar-container {
-  max-width: 600px;
-  margin: 20px auto; 
+  max-width: 680px;
+  margin: 0 auto;
   padding: 20px;
-  background-color: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
 .cal-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  justify-content: space-between;
+  margin-bottom: 22px;
 }
-.cal-header h2 { margin: 0; }
-.cal-header button {
-  padding: 8px 15px;
+
+.month-title {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.month-title span {
+  font-size: 14px;
+  color: #777;
+}
+
+.month-title strong {
+  font-size: 22px;
+}
+
+.month-button {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 12px;
+  background: #f2f5f3;
+  color: #444;
+  font-size: 30px;
+  line-height: 1;
   cursor: pointer;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  background-color: #f9f9f9;
+  transition: 0.15s;
 }
+
+.month-button:hover {
+  background: #e5ebe7;
+}
+
+.month-button:active {
+  transform: scale(0.94);
+}
+
+/* =========================
+   Weekdays
+========================= */
 
 .cal-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 7px;
   text-align: center;
-  font-weight: bold;
-  margin-bottom: 10px;
 }
-.sun { color: red; }
-.sat { color: blue; }
 
-/* 7列のマス目 */
+.cal-weekdays span {
+  font-size: 12px;
+  font-weight: 700;
+  color: #888;
+}
+
+.cal-weekdays .sun {
+  color: #df7272;
+}
+
+.cal-weekdays .sat {
+  color: #668ac1;
+}
+
+/* =========================
+   Calendar grid
+========================= */
+
 .cal-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 5px; /* マス目同士の隙間 */
+  gap: 5px;
 }
 
-/* 1つ1つのマス目のデザイン */
 .day-box {
-  aspect-ratio: 1 / 1; /* 高さを指定しなくても自動で正方形になる魔法 */
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  font-size: 1.2rem;
-  background-color: #f9f9f9;
-  cursor: pointer;
   position: relative;
+  aspect-ratio: 1 / 1;
+  min-width: 0;
+  border: 1px solid #edf0ee;
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+
+  padding-top: 9px;
+
+  transition:
+    transform 0.12s,
+    background 0.12s,
+    border-color 0.12s;
 }
 
-/* 通常の日付（期間内）にマウスを乗せた時 */
-.day-box:not(.is-empty):not(.out-of-range):hover {
-  background-color: #e0f7fa;
-  border-color: #26c6da;
+.day-box:not(.is-empty):not(.out-of-range):not(.marked):hover {
+  background: #f2f8f4;
+  border-color: #a8c9b5;
 }
 
-/* 空白マス（1日より前など） */
+.day-box:not(.is-empty):not(.out-of-range):active {
+  transform: scale(0.94);
+}
+
 .day-box.is-empty {
-  background-color: transparent;
   border: none;
+  background: transparent;
   cursor: default;
 }
 
-/* 目標期間外のマス目（グレーアウト） */
 .day-box.out-of-range {
-  background-color: #f0f0f0;
-  color: #ccc;
-  border-color: #f0f0f0;
-  cursor: not-allowed;
+  background: #f7f7f7;
+  border-color: #f7f7f7;
+  color: #d0d0d0;
+  cursor: default;
 }
 
-/* マーク済みのマス目 */
+.date-text {
+  font-size: clamp(13px, 3vw, 16px);
+  font-weight: 600;
+}
+
+/* =========================
+   Marked
+========================= */
+
 .day-box.marked {
-  background-color: #ffebee;
-  border-color: #ffcdd2;
-  cursor: default; /* クリックできないように見せる */
+  background: #eef8f1;
+  border-color: #b8d8c2;
 }
 
-/* 炎のイラスト（マス目の左上に配置） */
-.icon-start {
+.mark-circle {
   position: absolute;
-  top: 2px;
-  left: 4px;
-  font-size: 16px;
-  opacity: 0.9;
-}
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -38%);
 
-/* 星のイラスト（マス目の右下に配置） */
-.icon-target {
-  position: absolute;
-  bottom: 0px;
-  right: 4px;
-  font-size: 18px;
-}
+  width: 34px;
+  height: 34px;
 
-.stamp {
-  position: absolute;
-  font-size: 35px;
-  color: red;
-  opacity: 0.7;
-  z-index: 10;
-}
+  border-radius: 50%;
+  background: #4f9569;
+  color: white;
 
-/* --- ここからポップアップ（モーダル）用のデザイン --- */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
+
+  font-size: 20px;
+  font-weight: 800;
+
+  box-shadow: 0 3px 8px rgba(79, 149, 105, 0.25);
+}
+
+/* =========================
+   Start / Goal badges
+========================= */
+
+.day-badge {
+  position: absolute;
+  bottom: 4px;
+
+  padding: 2px 4px;
+  border-radius: 4px;
+
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.start-badge {
+  left: 3px;
+  color: #d47734;
+  background: #fff2e7;
+}
+
+.target-badge {
+  right: 3px;
+  color: #8766bd;
+  background: #f2ecfb;
+}
+
+/* =========================
+   Legend
+========================= */
+
+.calendar-legend {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #edf0ee;
+}
+
+.calendar-legend > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  font-size: 11px;
+  color: #777;
+}
+
+.legend-mark {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.legend-mark.achieved {
+  background: #4f9569;
+}
+
+.legend-mark.start {
+  background: #e59a62;
+}
+
+.legend-mark.target {
+  background: #9676c5;
+}
+
+/* =========================
+   Modal
+========================= */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
   z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background: rgba(20, 27, 23, 0.55);
+  backdrop-filter: blur(5px);
 }
 
 .modal-content {
-  background-color: white;
-  padding: 30px;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 15px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  width: min(100%, 430px);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+
+  padding: 24px;
+
+  background: white;
+  border-radius: 24px;
+
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
 }
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.close-button {
+  width: 38px;
+  height: 38px;
+
+  border: none;
+  border-radius: 50%;
+
+  background: #f3f4f3;
+  color: #555;
+
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.modal-description {
+  margin: 8px 0 18px;
+  color: #777;
+  font-size: 14px;
+}
+
+/* =========================
+   Canvas
+========================= */
 
 .canvas-container {
   position: relative;
-  width: 300px;
-  height: 300px;
+
+  width: min(300px, 100%);
+  aspect-ratio: 1 / 1;
+
+  margin: 0 auto;
+
+  border-radius: 18px;
+  overflow: hidden;
+
+  background:
+    linear-gradient(#f1f4f2 1px, transparent 1px),
+    linear-gradient(90deg, #f1f4f2 1px, transparent 1px);
+  background-size: 30px 30px;
 }
 
 .guide-x {
   position: absolute;
-  top: 50%;
-  left: 50%;
+  inset: 50% auto auto 50%;
   transform: translate(-50%, -50%);
-  font-size: 250px;
-  color: #e0e0e0;
+
+  font-size: 230px;
+  line-height: 1;
+
+  color: #e5e9e6;
+
   user-select: none;
+  pointer-events: none;
   z-index: 1;
 }
 
 .draw-canvas {
   position: absolute;
-  top: 0;
-  left: 0;
-  border: 3px dashed #ccc;
-  border-radius: 8px;
-  background-color: transparent;
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+
   cursor: crosshair;
   touch-action: none;
+
   z-index: 2;
 }
 
+.draw-hint {
+  margin: 12px 0 0;
+
+  text-align: center;
+
+  font-size: 12px;
+  line-height: 1.5;
+  color: #999;
+}
+
+/* =========================
+   Modal buttons
+========================= */
+
 .modal-actions {
-  display: flex;
-  gap: 10px;
-  width: 100%;
-  justify-content: center;
-  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+
+  margin-top: 20px;
 }
 
 .modal-actions button {
-  padding: 10px 16px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
+  min-height: 48px;
+
+  border: none;
+  border-radius: 12px;
+
+  font-size: 14px;
+  font-weight: 700;
+
   cursor: pointer;
-  font-weight: bold;
+}
+
+.secondary-btn {
+  background: #f1f4f2;
+  color: #555;
+}
+
+.cancel-btn {
+  background: #f7f7f7;
+  color: #777;
 }
 
 .save-btn {
-  background-color: #ff5252;
+  grid-column: 1 / -1;
+
+  background: #4f9569;
   color: white;
-  border: none !important;
+
+  box-shadow: 0 5px 12px rgba(79, 149, 105, 0.22);
 }
+
 .save-btn:hover {
-  background-color: #ff1744;
+  background: #427f59;
 }
+
+.modal-actions button:active {
+  transform: scale(0.98);
+}
+
+/* =========================
+   Toast
+========================= */
+
+.toast {
+  position: fixed;
+  z-index: 2000;
+
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+
+  width: min(calc(100% - 32px), 430px);
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 14px 16px;
+
+  border-radius: 14px;
+
+  background: #262b28;
+  color: white;
+
+  font-size: 13px;
+  line-height: 1.4;
+
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.toast-info {
+  background: #365b47;
+}
+
+.toast-icon {
+  flex-shrink: 0;
+
+  width: 24px;
+  height: 24px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: rgba(255, 255, 255, 0.15);
+
+  font-weight: 800;
+}
+
+.toast-close {
+  margin-left: auto;
+
+  border: none;
+  background: transparent;
+
+  color: rgba(255, 255, 255, 0.7);
+
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.25s ease;
+}
+
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translate(-50%, 15px);
+}
+
+/* =========================
+   Mobile
+========================= */
+
+@media (max-width: 600px) {
+
+  .calendar-page {
+    padding: 12px 10px 32px;
+  }
+
+  .app-header {
+    margin-bottom: 12px;
+  }
+
+  .goal-info {
+    padding: 20px;
+    border-radius: 18px;
+  }
+
+  .goal-period {
+    gap: 10px;
+  }
+
+  .calendar-container {
+    padding: 14px 10px 16px;
+    border-radius: 18px;
+  }
+
+  .cal-grid {
+    gap: 3px;
+  }
+
+  .day-box {
+    border-radius: 9px;
+    padding-top: 7px;
+  }
+
+  .mark-circle {
+    width: 29px;
+    height: 29px;
+    font-size: 17px;
+  }
+
+  .day-badge {
+    font-size: 6px;
+  }
+
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal-content {
+    width: 100%;
+    max-height: 92vh;
+
+    padding: 22px 18px;
+    border-radius: 24px 24px 0 0;
+
+    padding-bottom: calc(
+      22px + env(safe-area-inset-bottom)
+    );
+  }
+
+  .canvas-container {
+    width: min(82vw, 300px);
+  }
+
+  .toast {
+    bottom: calc(
+      16px + env(safe-area-inset-bottom)
+    );
+  }
+}
+
+@media (max-width: 360px) {
+
+  .calendar-container {
+    padding-left: 7px;
+    padding-right: 7px;
+  }
+
+  .cal-grid {
+    gap: 2px;
+  }
+
+  .day-box {
+    border-radius: 7px;
+  }
+
+  .mark-circle {
+    width: 25px;
+    height: 25px;
+    font-size: 15px;
+  }
+
+  .day-badge {
+    display: none;
+  }
+}
+
+/* =========================
+   Logout confirmation
+========================= */
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background: rgba(20, 27, 23, 0.55);
+  backdrop-filter: blur(5px);
+}
+
+.confirm-modal {
+  width: min(100%, 360px);
+
+  padding: 28px 24px 24px;
+
+  background: white;
+  border-radius: 22px;
+
+  text-align: center;
+
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+
+  animation: modal-in 0.18s ease-out;
+}
+
+.confirm-icon {
+  width: 52px;
+  height: 52px;
+
+  margin: 0 auto 16px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #f1f4f2;
+  color: #5f7467;
+
+  font-size: 25px;
+  font-weight: bold;
+}
+
+.confirm-modal h2 {
+  margin: 0;
+
+  font-size: 20px;
+}
+
+.confirm-modal p {
+  margin: 10px 0 24px;
+
+  font-size: 13px;
+  line-height: 1.6;
+
+  color: #777;
+}
+
+.confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.confirm-actions button {
+  min-height: 48px;
+
+  border: none;
+  border-radius: 12px;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition: 0.15s;
+}
+
+.confirm-actions button:active {
+  transform: scale(0.97);
+}
+
+.confirm-cancel {
+  background: #f1f3f2;
+  color: #555;
+}
+
+.confirm-logout {
+  background: #555;
+  color: white;
+}
+
+.confirm-logout:hover {
+  background: #333;
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 600px) {
+
+  .confirm-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .confirm-modal {
+    width: 100%;
+
+    border-radius: 24px 24px 0 0;
+
+    padding: 28px 20px;
+
+    padding-bottom: calc(
+      28px + env(safe-area-inset-bottom)
+    );
+
+    animation: modal-up 0.2s ease-out;
+  }
+
+}
+
+@keyframes modal-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 </style>

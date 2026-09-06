@@ -24,6 +24,7 @@ public class MarkService {
         return this.markRepository.findByGoalId(goalId);
     }
 
+    @Transactional
     public Mark createNewMark(@PathVariable("goalId") Long goalId, @RequestBody Mark mark) {
         mark.setGoalId(goalId);
 

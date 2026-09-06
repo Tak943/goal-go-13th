@@ -57,7 +57,7 @@ public class GoalController {
                         HttpStatus.FORBIDDEN, "アクセス拒否");
             }
         }
-        // 全件取得はあとで削除
+        // 全件取得はあとで削除。デバッグ用
         else {
             return this.goalService.getAllGoals();
         }

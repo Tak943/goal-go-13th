@@ -1,5 +1,6 @@
 package com.example.backend.service;
 
+import java.beans.Transient;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -9,6 +10,8 @@ import org.springframework.stereotype.Service;
 
 import com.example.backend.entity.User;
 import com.example.backend.repository.UserRepository;
+
+import jakarta.transaction.Transactional;
 
 @Service
 public class UserService {
@@ -30,6 +33,7 @@ public class UserService {
         return this.userRepository.findByToken(token);
     }
 
+    @Transactional
     public User createOrLoginNewUser(String username) {
         // ユーザーが登録済みならユーザー返す
         if (isUserPresent(username)) {
@@ -51,6 +55,7 @@ public class UserService {
         return userOpt.isPresent();
     }
 
+    @Transactional
     public ResponseEntity<String> deleteUser(Long id) {
         this.userRepository.deleteById(id);
         return ResponseEntity.ok("id=" + id + "のユーザーを削除");
