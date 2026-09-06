@@ -10,11 +10,11 @@ Content-Type: application/json
 }
 
 ### 2. 目標の一覧を取得する (GET) ?userId=でユーザーして取得
-GET http://localhost:8080/api/goals?userId=4
-Authorization: d10ab66a-0191-4099-9413-a30dadfbe2ee
+GET http://localhost:8080/api/goals?userId=3
+Authorization: 4e9de250-bc82-49bd-ae2b-ea4d7183c3f9
 
 ### DELETE目標の削除
-DELETE http://localhost:8080/api/goals/20
+DELETE http://localhost:8080/api/goals/22
 Authorization: 4e9de250-bc82-49bd-ae2b-ea4d7183c3f9
 
 ### 目標の更新
@@ -68,3 +68,48 @@ Authorization: d10ab66a-0191-4099-9413-a30dadfbe2ee
 ### 目標の削除（他人のトークン、または適当な文字列の場合）
 DELETE http://localhost:8080/api/goals/14
 Authorization: dammy-token-12345
+
+### Todoの追加
+POST http://localhost:8080/api/goals/17/todo
+Authorization: 4e9de250-bc82-49bd-ae2b-ea4d7183c3f9
+Content-Type: application/json
+
+{
+  "title": "LEGO作る",
+  "time": "18:33"
+}
+
+### isDone=falseのTodoの取得?all=trueで全件取得
+GET http://localhost:8080/api/goals/17/todo
+Authorization: 4e9de250-bc82-49bd-ae2b-ea4d7183c3f9
+Content-Type: application/json
+
+### Todoの削除
+DELETE http://localhost:8080/api/goals/19/todo/8
+Authorization: 4e9de250-bc82-49bd-ae2b-ea4d7183c3f9
+# Content-Type: application/json
+
+### Todoの更新 title と time
+PUT http://localhost:8080/api/goals/17/todo/1
+Authorization: 4e9de250-bc82-49bd-ae2b-ea4d7183c3f9
+Content-Type: application/json
+
+{
+  "title": "とらちゃん",
+  "time": "19:18",
+}
+
+###
+PUT http://localhost:8080/api/goals/17/todo/2/complete
+Authorization: 4e9de250-bc82-49bd-ae2b-ea4d7183c3f9
+Content-Type: application/json
+
+{
+  "doneDate": "2026-09-14",
+  "isDone": true
+}
+
+### goalId=17のisDone=trueのtodo一覧を取得
+GET http://localhost:8080/api/goals/17/todo/complete
+Authorization: 4e9de250-bc82-49bd-ae2b-ea4d7183c3f9
+
