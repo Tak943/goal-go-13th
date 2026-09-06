@@ -38,7 +38,7 @@ const login = async () => {
 
   try {
     const response = await axios.post(
-      "http://localhost:8080/api/users/login",
+      "/api/users/login",
       {
         username: username.value
       }
@@ -56,6 +56,7 @@ const login = async () => {
 
   } catch (error) {
     showToast("ログインに失敗しました。もう一度お試しください。");
+    alert("エラー原因: " + error.message);
     console.error(error);
   }
 };

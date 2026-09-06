@@ -2,6 +2,7 @@
 import { ref, onMounted, nextTick, computed } from 'vue';
 import axios from 'axios';
 import { useRoute, useRouter } from 'vue-router'; // 【変更】useRouterを追加
+import TodoView from './TodoView.vue';
 
 const route = useRoute();
 const router = useRouter(); // 【追加】画面遷移用
@@ -458,6 +459,9 @@ const saveMark = async () => {
       </div>
 
     </section>
+
+    <!-- Todo -->
+    <TodoView :goal-id="goalId" />
 
     <!-- お絵かきモーダル -->
     <div
