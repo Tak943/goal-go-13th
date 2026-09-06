@@ -71,7 +71,7 @@ const login = async () => {
         ✕
       </div>
 
-      <h1>目標管理アプリ</h1>
+      <h1>Goal-Go-13th 🎯</h1>
 
       <p>
         小さな一歩を、毎日の記録に。
