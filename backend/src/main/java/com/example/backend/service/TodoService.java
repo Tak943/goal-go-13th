@@ -3,6 +3,9 @@ package com.example.backend.service;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -15,6 +18,8 @@ import jakarta.transaction.Transactional;
 
 @Service
 public class TodoService {
+    private static final Logger logger = LoggerFactory.getLogger(TodoService.class);
+
     private final TodoRepository todoRepository;
 
     public TodoService(TodoRepository todoRepository) {
@@ -32,13 +37,26 @@ public class TodoService {
     @Transactional
     public Todo createNewTodo(Long goalId, Todo todo) {
         todo.setGoalId(goalId);
-        return this.todoRepository.save(todo);
+        try {
+            Todo savedTodo = this.todoRepository.save(todo);
+            logger.info("GoalID: {} へのTodo保存に成功しました。新規TodoID: {}", goalId, savedTodo.getId());
+            return savedTodo;
+        } catch (Exception e) {
+            logger.error("Todoの保存中にエラーが発生しました。GoalID: {}, 原因: {}", goalId, e.getMessage(), e);
+            throw e;
+        }
     }
 
     @Transactional
     public ResponseEntity<String> deleteTodoById(Long id) {
-        this.todoRepository.deleteById(id);
-        return ResponseEntity.ok("id=" + id + "のtodoアイテムを削除");
+        try{
+            this.todoRepository.deleteById(id);
+            logger.info("TodoID: {} のデータを削除しました", id);
+            return ResponseEntity.ok("id=" + id + "のtodoアイテムを削除");
+        } catch(Exception e){
+            logger.error("Todoの削除中にエラーが発生しました。TodoID: {}, 原因: {}", id, e.getMessage(), e);
+            throw e;
+        }
     }
 
     @Transactional
@@ -52,7 +70,14 @@ public class TodoService {
             dbTodo.setTime(requestTodo.getTime());
         }
 
-        return this.todoRepository.save(dbTodo);
+        try {
+            Todo updatedTodo = this.todoRepository.save(dbTodo);
+            logger.info("TodoID: {} の内容を更新しました。", id);
+            return updatedTodo;
+        } catch (Exception e) {
+            logger.error("Todoの更新中にエラーが発生しました。TodoID: {}, 原因: {}", id, e.getMessage(), e);
+            throw e;
+        }
     }
 
     public boolean isTodoGoalIdSameRequestGoalId(Long todoId, Long goalId){
@@ -68,7 +93,14 @@ public class TodoService {
         dbTodo.setIsDone(true);
         dbTodo.setDoneDate(LocalDate.now());
 
-        return this.todoRepository.save(dbTodo);
+        try {
+            Todo completedTodo = this.todoRepository.save(dbTodo);
+            logger.info("TodoID: {} を「完了」状態に更新しました。", id);
+            return completedTodo;
+        } catch (Exception e) {
+            logger.error("Todoの完了処理中にエラーが発生しました。TodoID: {}, 原因: {}", id, e.getMessage(), e);
+            throw e;
+        }
     }
 
     public List<Todo> getDoneTodo(Long goalId){
