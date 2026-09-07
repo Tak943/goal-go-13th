@@ -16,6 +16,9 @@ import com.example.backend.service.MarkService;
 import java.util.List;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,6 +35,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 @RequestMapping("/api/goals")
 @CrossOrigin
 public class GoalController {
+
+    private static final Logger logger = LoggerFactory.getLogger(GoalController.class);
 
     private final UserService userService;
     private final GoalService goalService;
@@ -53,6 +58,8 @@ public class GoalController {
             if (requestUser.getId() == userId) {
                 return this.goalService.getAllGoalsByUserId(userId);
             } else {
+                //ハックしようとしたのは重大だが、システム自体は落ちない＝バグではない、からerrorではなくwarnにしておく。夜中でも担当エンジニアをたたき起こさないレベル
+                logger.warn("権限エラー：他人の目標一覧へのアクセス試行を検知しました。userId: {}", userId);
                 throw new ResponseStatusException(
                         HttpStatus.FORBIDDEN, "アクセス拒否");
             }
@@ -65,12 +72,12 @@ public class GoalController {
 
     @GetMapping("/{id}")
     public Optional<Goal> getGoalById(
-        @PathVariable("id") Long id,
-        @RequestHeader("Authorization") String token
-    ) {
+            @PathVariable("id") Long id,
+            @RequestHeader("Authorization") String token) {
         if (goalService.isAuthorizedUser(id, token)) {
             return goalService.getGoalById(id);
         } else {
+            logger.warn("権限エラー：他人の目標詳細へのアクセス試行。GoalID: {}", id);
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN, "アクセス拒否");
         }
@@ -81,6 +88,7 @@ public class GoalController {
     public Goal createGoal(
             @RequestBody Goal goal,
             @RequestHeader("Authorization") String token) {
+        logger.info("目標作成リクエストを受信。タイトル: {}", goal.getTitle());
         return goalService.createGoal(goal, token);
     }
 
@@ -88,10 +96,14 @@ public class GoalController {
     public ResponseEntity<String> deleteGoalById(
             @PathVariable("id") Long id,
             @RequestHeader("Authorization") String token) {
+        logger.info("目標削除リクエストを受信。GoalID: {}", id);
+
         if (goalService.isAuthorizedUser(id, token)) {
+            logger.info("権限チェックOK。GoalID: {} の削除処理を開始します。", id);
             markService.deleteMarkById(id);
             return goalService.deleteGoalById(id);
         } else {
+            logger.warn("権限エラー：不正なトークンでの目標削除試行。GoalID: {}", id);
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN, "アクセス拒否");
         }
@@ -102,10 +114,14 @@ public class GoalController {
             @PathVariable("id") Long id,
             @RequestBody Goal newGoalData,
             @RequestHeader("Authorization") String token) {
+        logger.info("目標更新リクエストを受信。GoalID: {}", id);
+
         if (goalService.isAuthorizedUser(id, token)) {
+            logger.info("権限チェックOK。GoalID: {} の更新処理を開始します。", id);
             Goal updatedGoal = goalService.modifyGoalById(id, newGoalData);
             return ResponseEntity.ok(updatedGoal);
         } else {
+            logger.warn("権限エラー：不正なトークンでの目標更新試行。GoalID: {}", id);
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN, "アクセス拒否");
         }
