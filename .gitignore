@@ -1,0 +1,5 @@
+# .env無視
+.env
+
+# log無視
+logs/

@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  # ① データベースの箱（MySQL）
+  db:
+    image: mysql:8.0    # 公式の完成品イメージを使う
+    container_name: mysql-container
+    ports:
+      - "3306:3306"
+    environment:        # .env に書いたパスワードをMySQLの箱に渡す
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:            # コンテナを消してもデータが消えないようにする魔法
+      - db-data:/var/lib/mysql
+
+  # ② バックエンドの箱（Spring Boot）
+ # ② バックエンド（Spring Bootの店）
+  backend:
+    build: ./backend
+    container_name: spring-backend-container
+    ports:
+      - "8080:8080"
+    environment:
+      # 【重要】Springからは「db」というコンテナ名（内部の安全な回線）で通信する
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/${MYSQL_DATABASE}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Tokyo
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+    depends_on:
+      - db
+
+volumes:
+  db-data:
