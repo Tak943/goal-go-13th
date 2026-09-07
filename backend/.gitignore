@@ -40,4 +40,4 @@ out/
 .env
 
 ### logをGitに無視させる
-/logs/
+logs/
