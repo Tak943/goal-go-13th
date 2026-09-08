@@ -328,7 +328,7 @@ const selectDate = (day) => {
           <input
             type="text"
             v-model="newGoalTitle"
-            placeholder="例：毎日30分英語を勉強する"
+            placeholder="例： TOEICで900点取る"
             class="form-input"
           >
         </div>
