@@ -1,14 +1,24 @@
-# ベースの環境 Javaが動くOSを持ってくる
-FROM eclipse-temurin:17-jdk-alpine
-
-# containerの中での作業部屋を /app と名付け
+# ステージ1: ビルド環境（Javaのコードをビルドする係）
+FROM eclipse-temurin:17-jdk-alpine AS builder
 WORKDIR /app
 
-# Spring Bootのアプリ本体（いままでのJavaコードをまとめて.jarに固めたもの）を、箱の作業部屋にコピーする
-COPY build/libs/*.jar app.jar
+# 依存関係とソースコードをコピー
+COPY gradlew .
+COPY gradle gradle
+COPY build.gradle .
+COPY settings.gradle .
+COPY src src
 
-# この箱は8080番ポートで通信を受け付ける
-EXPOSE 8080
+# gradlewに実行権限を付与してビルド（テストはスキップ）
+RUN chmod +x ./gradlew
+RUN ./gradlew bootJar -x test
 
-# 箱の起動時に自動で実行するコマンド（java -jar app.jar）
-ENTRYPOINT [ "java", "-jar", "app.jar" ]
+# ステージ2: 本番実行環境（完成したアプリだけを動かす係）
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+
+# ステージ1で作られた完成品（jar）だけをコピー
+COPY --from=builder /app/build/libs/*.jar app.jar
+
+# アプリの起動
+ENTRYPOINT ["java", "-jar", "app.jar"]
