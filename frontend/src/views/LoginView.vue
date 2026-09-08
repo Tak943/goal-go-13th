@@ -118,7 +118,10 @@ const login = async () => {
           type="text"
           v-model="username"
           placeholder="例：たろう"
-          autocomplete="username"
+          autocomplete="off"
+          autocapitalize="none"
+          autocorrect="off"
+          spellcheck="false"
         >
 
           <button
