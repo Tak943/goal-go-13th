@@ -41,3 +41,6 @@ out/
 
 ### logをGitに無視させる
 logs/
+
+### api.httpを無視
+api.http
