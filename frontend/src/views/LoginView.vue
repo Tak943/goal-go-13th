@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useRouter } from 'vue-router';
 
 const username = ref("");
+const isLoggingIn = ref(false);
 const router = useRouter();
 
 // Toast
@@ -36,6 +37,13 @@ const login = async () => {
     return;
   }
 
+  // 二重送信防止
+  if (isLoggingIn.value) {
+    return;
+  }
+
+  isLoggingIn.value = true;
+
   try {
     const response = await axios.post(
       "/api/users/login",
@@ -51,15 +59,24 @@ const login = async () => {
     localStorage.setItem("app_username", user.username);
 
     axios.defaults.headers.common['Authorization'] = user.token;
+    
+    // await new Promise(resolve => setTimeout(resolve, 2000));
 
     router.push({ name: 'home' });
 
   } catch (error) {
     showToast("ログインに失敗しました。もう一度お試しください。");
+
     alert("エラー原因: " + error.message);
+
     console.error(error);
+
+  } finally {
+    // 通信終了後に必ず元に戻す
+    isLoggingIn.value = false;
   }
 };
+
 </script>
 
 <template>
@@ -104,13 +121,20 @@ const login = async () => {
           autocomplete="username"
         >
 
-        <button
-          type="submit"
-          class="login-button"
-        >
-          はじめる
-          <span>→</span>
-        </button>
+          <button
+            type="submit"
+            class="login-button"
+            :disabled="isLoggingIn"
+          >
+            <template v-if="isLoggingIn">
+              ログイン/登録しています...
+            </template>
+
+            <template v-else>
+              はじめる
+              <span>→</span>
+            </template>
+          </button>
 
       </form>
 
@@ -368,6 +392,22 @@ input:focus {
     background 0.15s,
     transform 0.1s,
     box-shadow 0.15s;
+}
+
+.login-button:disabled {
+  background: #aeb8b2;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.login-button:disabled:hover {
+  background: #aeb8b2;
+  box-shadow: none;
+}
+
+.login-button:disabled span {
+  transform: none;
 }
 
 .login-button span {
