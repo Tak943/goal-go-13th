@@ -487,7 +487,7 @@ const saveMark = async () => {
         </div>
 
         <p class="modal-description">
-          今日の行動を記録しましょう
+          今日もよく頑張った！お疲れ様です！！
         </p>
 
         <div class="canvas-container">
